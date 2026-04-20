@@ -1,0 +1,53 @@
+name: Test Install Script
+
+on:
+  push:
+    paths:
+      - 'install.sh'
+      - '.github/workflows/test.yml'
+  pull_request:
+    paths:
+      - 'install.sh'
+  workflow_dispatch: # 手動実行用
+
+jobs:
+  test-installation:
+    runs-on: ubuntu-22.04 # 安定性のためにバージョン指定推奨
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Make script executable
+        run: chmod +x install.sh
+
+      - name: Run install script
+        run: ./install.sh
+
+      - name: Verify installed tools
+        run: |
+          echo "--- Verifying tools ---"
+          
+          # パスを通す（GitHub Actionsは非対話シェルなので手動で読み込む）
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          source "$HOME/.cargo/env"
+          
+          # 基本ツールのチェック
+          checksec --version
+          rp++ --help > /dev/null # rp++は--versionがない場合があるので--helpで終了コードチェック
+          ropr --help > /dev/null
+          
+          # Rubyツールのチェック
+          one_gadget --version
+          seccomp-tools --version
+          
+          # Pythonツールのチェック
+          python3 -c "import pwn; print('pwntools version:', pwn.__version__)"
+          python3 -c "import ptrlib; print('ptrlib imported successfully')"
+          
+          # GDBプラグインのチェック (pwndbg等がクラッシュせずに起動するか)
+          # gdbは非対話でquitさせ、エラーコードが返らないか確認
+          gdb -ex "quit"
+          
+          echo "--- All verifications passed! ---"

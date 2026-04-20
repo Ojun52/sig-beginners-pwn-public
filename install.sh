@@ -1,162 +1,111 @@
 #!/bin/bash
+set -e
+
 SH_PATH=$(cd $(dirname $0) && pwd)
 cd $SH_PATH
 
-sudo apt update && sudo DEBIAN_FRONTEND=noninteractive apt install -y wget
+echo -e "\e[31m--- Basic Setup ---\e[m"
+sudo apt update && sudo DEBIAN_FRONTEND=noninteractive apt install -y wget curl git build-essential sudo
+
+# Configuration files
 wget https://raw.githubusercontent.com/iwashiira/sig-beginners-pwn-public/main/.gdbinit -O $HOME/.gdbinit
 wget https://raw.githubusercontent.com/iwashiira/sig-beginners-pwn-public/main/.bashrc -O $HOME/.bashrc
 sudo wget https://raw.githubusercontent.com/iwashiira/sig-beginners-pwn-public/main/manage_aslr.sh -O /usr/local/bin/aslr
 sudo chmod +x /usr/local/bin/aslr
 
+# Neovim (Latest Stable)
+echo -e "\e[31m--- Neovim installation ---\e[m"
 wget https://github.com/neovim/neovim/releases/download/stable/nvim-linux-x86_64.tar.gz -O /tmp/nvim-linux64.tar.gz
-tar xzf /tmp/nvim-linux64.tar.gz -C /tmp
-sudo cp /tmp/nvim-linux-x86_64/bin/nvim /usr/bin
-sudo cp -r /tmp/nvim-linux-x86_64/share/nvim /usr/share
+sudo tar xzf /tmp/nvim-linux64.tar.gz -C /usr/local --strip-components=1
 rm /tmp/nvim-linux64.tar.gz
-rm -r /tmp/nvim-linux-x86_64
 
 echo -e "\e[31m--- Docker installation ---\e[m"
+if ! command -v docker &> /dev/null; then
+    for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove -y $pkg || true; done
 
-for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
+    sudo apt update && sudo DEBIAN_FRONTEND=noninteractive apt install -y ca-certificates
+    sudo install -m 0755 -d /etc/apt/keyrings
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
 
-# Add Docker's official GPG key:
-sudo apt update && sudo DEBIAN_FRONTEND=noninteractive apt install -y ca-certificates curl
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt update
+    sudo DEBIAN_FRONTEND=noninteractive apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+else
+    echo -e "\e[33mDocker is already installed. Skipping installation.\e[m"
+fi
 
-# Add the repository to Apt sources:
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt update
-sudo DEBIAN_FRONTEND=noninteractive apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-echo -e "\e[34m--- Docker installation successfully ended ---\e[m"
-
-echo -e "\e[31m--- Pwnable Tools installation ---\e[m"
-
-sudo apt update && sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y
-
+echo -e "\e[31m--- Dependencies installation ---\e[m"
 sudo apt update && sudo DEBIAN_FRONTEND=noninteractive apt install -y \
-    build-essential \
-    ca-certificates \
-    libssl-dev \
-    zlib1g-dev \
-    libbz2-dev \
-    libreadline-dev \
-    libsqlite3-dev \
-    wget \
-    curl \
-    llvm \
-    make \
-    zip \
-    unzip \
-    libncurses5-dev \
-    libncursesw5-dev \
-    xz-utils \
-    tk-dev \
-    libxml2-dev \
-    libxmlsec1-dev \
-    libffi-dev \
-    liblzma-dev \
-    libyaml-dev \
-    python3 \
-    python3-dev \
-    python3-pip \
-    gcc \
-    tree \
-    git \
-    libyaml-dev \
+    libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
+    llvm make zip unzip libncurses5-dev libncursesw5-dev xz-utils tk-dev \
+    libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev libyaml-dev \
+    python3 python3-dev python3-pip gcc tree git pkg-config netcat-openbsd patchelf \
+    ruby ruby-dev
 
 python3 -m pip install -U pip
 
-echo -e "\e[31m--- Cargo installation ---\e[m"
-
-curl https://sh.rustup.rs -sSf | sh -s -- -y
-source "$HOME/.cargo/env"
-
-echo -e "\e[34m--- Cargo installation successfully ended ---\e[m"
-
-echo -e "\e[31m--- Node installation ---\e[m"
-
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-source ~/.bashrc
-
-nvm install 20
-node -v
-npm -v
-
-echo -e "\e[34m--- Node installation successfully ended ---\e[m"
-
-sudo apt update && sudo apt install -y \
-    build-essential \
-    gdb \
-    libssl-dev \
-    libffi-dev \
-    vim \
-    curl \
-    wget \
-    pkg-config \
-    git \
-    netcat \
-    patchelf \
-    sudo \
-    && sudo apt clean \
-    && sudo rm -rf /var/lib/apt/lists/*
-
-
-sudo wget $(curl -s https://api.github.com/repos/slimm609/checksec/releases/latest | grep browser_download_url | grep linux_amd64 | cut -d '"' -f 4) -O /tmp/checksec.tar.gz
-mkdir -p /tmp/checksec
-tar xzvf /tmp/checksec.tar.gz -C /tmp/checksec
-sudo cp /tmp/checksec/checksec /usr/local/bin/checksec
-sudo chmod +x /usr/local/bin/checksec
-
-sudo wget https://github.com/0vercl0k/rp/releases/download/v2.1.3/rp-lin-gcc.zip -O /tmp/rp++.zip
-unzip /tmp/rp++.zip -d /tmp
-sudo cp /tmp/rp-lin /usr/local/bin/rp++
-sudo chmod +x /usr/local/bin/rp++
-
-python3 -m pip install pwntools pathlib2 ptrlib
-
+echo -e "\e[31m--- Cargo & Rust Tools ---\e[m"
+if ! command -v cargo &> /dev/null; then
+    curl https://sh.rustup.rs -sSf | sh -s -- -y
+    source "$HOME/.cargo/env"
+    if ! grep -q 'source "$HOME/.cargo/env"' "$HOME/.bashrc"; then
+        echo 'source "$HOME/.cargo/env"' >> "$HOME/.bashrc"
+    fi
+fi
 cargo install ropr
 
+echo -e "\e[31m--- Node.js installation (nvm) ---\e[m"
+NVM_VERSION=$(curl -s https://api.github.com/repos/nvm-sh/nvm/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" | bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+nvm install 20
+
+echo -e "\e[31m--- Pwnable Tools ---\e[m"
+
+# checksec
+CHECKSEC_URL=$(curl -s https://api.github.com/repos/slimm609/checksec/releases/latest | grep browser_download_url | grep linux_amd64 | cut -d '"' -f 4)
+wget "$CHECKSEC_URL" -O /tmp/checksec
+sudo install /tmp/checksec /usr/local/bin/checksec
+
+# rp++
+RP_URL=$(curl -s https://api.github.com/repos/0vercl0k/rp/releases/latest | grep browser_download_url | grep linux-gcc | cut -d '"' -f 4)
+wget "$RP_URL" -O /tmp/rp.zip
+unzip -o /tmp/rp.zip -d /tmp
+sudo install /tmp/rp-lin /usr/local/bin/rp++
+
+# python libraries
+# Actions等の仮想環境でPEP 668エラー（externally-managed-environment）を回避するため --break-system-packages を付与
+python3 -m pip install pwntools pathlib2 ptrlib --break-system-packages || python3 -m pip install pwntools pathlib2 ptrlib
+
+# ruby tools
+sudo gem install one_gadget seccomp-tools
+
+# Directory for Tools
 PWNDIR="$HOME/pwn"
 TOOLS_DIR="$PWNDIR/Tools"
+mkdir -p "$TOOLS_DIR"
 
-if [ ! -e $PWNDIR ]; then
-    mkdir $PWNDIR
+# pwndbg
+echo -e "\e[33mInstalling pwndbg... (This may take a few minutes as it builds a Python venv)\e[m"
+if [ ! -d "$TOOLS_DIR/pwndbg" ]; then
+    git clone https://github.com/pwndbg/pwndbg "$TOOLS_DIR/pwndbg"
+    cd "$TOOLS_DIR/pwndbg" && DEBIAN_FRONTEND=noninteractive ./setup.sh
+else
+    cd "$TOOLS_DIR/pwndbg" && git pull && DEBIAN_FRONTEND=noninteractive ./setup.sh
 fi
-cd $PWNDIR
 
-if [ ! -e $TOOLS_DIR ]; then
-    mkdir $TOOLS_DIR
-fi
-cd $TOOLS_DIR
-
-git clone https://github.com/pwndbg/pwndbg
-cd $TOOLS_DIR/pwndbg && DEBIAN_FRONTEND=noninteractive ./setup.sh --update
-
-sudo apt install -y ruby ruby-dev build-essential
-sudo gem install one_gadget
-sudo gem install seccomp-tools
-
+# bata24/gef
 wget -q https://raw.githubusercontent.com/bata24/gef/dev/install-uv.sh -O- | sudo DEBIAN_FRONTEND=noninteractive sh
-sudo cp $HOME/.gdbinit /root
-#sudo cp -r /root/.gef $HOME
-#sudo chown -R "$(whoami)":"$(whoami)" $HOME/.gef
 
-sudo mkdir /root/pwn
-sudo ln -s $TOOLS_DIR /root/pwn/Tools
+# Root setup for convenience
+sudo mkdir -p /root/pwn
+sudo ln -sf "$TOOLS_DIR" /root/pwn/Tools
+sudo cp "$HOME/.gdbinit" /root/
 
-echo -e "\e[31m--- Kernel Pwnable Tools installation ---\e[m"
-
-sudo apt update && sudo DEBIAN_FRONTEND=noninteractive apt install -y \
-    qemu-system \
-    musl-tools
-
-sudo curl -o /usr/local/bin/extract-vmlinux -O https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux
-sudo chmod +x /usr/local/bin/extract-vmlinux
-
-echo -e "\e[34m--- Pwnable Tools installation successfully ended ---\e[m"
+echo -e "\e[34m--- All tools installed successfully ---\e[m"
+echo -e "\e[33mPlease restart your terminal or run 'source ~/.bashrc' to apply path changes.\e[m"
