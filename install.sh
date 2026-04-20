@@ -67,19 +67,30 @@ nvm install 20
 
 echo -e "\e[31m--- Pwnable Tools ---\e[m"
 
-# checksec
-CHECKSEC_URL=$(curl -s https://api.github.com/repos/slimm609/checksec/releases/latest | grep browser_download_url | grep linux_amd64 | cut -d '"' -f 4)
-wget "$CHECKSEC_URL" -O /tmp/checksec
-sudo install /tmp/checksec /usr/local/bin/checksec
+# checksec (tar.gzを展開するように修正。API制限時はBash版へフォールバック)
+echo "Installing checksec..."
+CHECKSEC_URL=$(curl -s https://api.github.com/repos/slimm609/checksec/releases/latest | grep browser_download_url | grep 'linux_amd64.tar.gz' | cut -d '"' -f 4 | head -n 1)
+if [ -n "$CHECKSEC_URL" ]; then
+    wget "$CHECKSEC_URL" -O /tmp/checksec.tar.gz
+    tar xzf /tmp/checksec.tar.gz -C /tmp
+    sudo install /tmp/checksec /usr/local/bin/checksec
+else
+    echo -e "\e[33mFailed to get checksec URL. Falling back to bash version...\e[m"
+    sudo wget -q https://raw.githubusercontent.com/slimm609/checksec.sh/master/checksec -O /usr/local/bin/checksec
+    sudo chmod +x /usr/local/bin/checksec
+fi
 
-# rp++
-RP_URL=$(curl -s https://api.github.com/repos/0vercl0k/rp/releases/latest | grep browser_download_url | grep linux-gcc | cut -d '"' -f 4)
-wget "$RP_URL" -O /tmp/rp.zip
-unzip -o /tmp/rp.zip -d /tmp
-sudo install /tmp/rp-lin /usr/local/bin/rp++
+# rp++ (ファイル名が rp-lin-x64 に変わった点と、zipではなくなった点に対応)
+echo "Installing rp++..."
+RP_URL=$(curl -s https://api.github.com/repos/0vercl0k/rp/releases/latest | grep browser_download_url | grep 'rp-lin-x64' | cut -d '"' -f 4 | head -n 1)
+if [ -n "$RP_URL" ]; then
+    wget "$RP_URL" -O /tmp/rp-lin
+    sudo install /tmp/rp-lin /usr/local/bin/rp++
+else
+    echo -e "\e[31mFailed to get rp++ URL. Skipping...\e[m"
+fi
 
 # python libraries
-# Actions等の仮想環境でPEP 668エラー（externally-managed-environment）を回避するため --break-system-packages を付与
 python3 -m pip install pwntools pathlib2 ptrlib --break-system-packages || python3 -m pip install pwntools pathlib2 ptrlib
 
 # ruby tools
