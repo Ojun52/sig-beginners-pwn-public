@@ -80,15 +80,6 @@ else
     sudo chmod +x /usr/local/bin/checksec
 fi
 
-# rp++ (ファイル名が rp-lin-x64 に変わった点と、zipではなくなった点に対応)
-echo "Installing rp++..."
-RP_URL=$(curl -s https://api.github.com/repos/0vercl0k/rp/releases/latest | grep browser_download_url | grep 'rp-lin-x64' | cut -d '"' -f 4 | head -n 1)
-if [ -n "$RP_URL" ]; then
-    wget "$RP_URL" -O /tmp/rp-lin
-    sudo install /tmp/rp-lin /usr/local/bin/rp++
-else
-    echo -e "\e[31mFailed to get rp++ URL. Skipping...\e[m"
-fi
 
 # python libraries
 python3 -m pip install pwntools pathlib2 ptrlib --break-system-packages || python3 -m pip install pwntools pathlib2 ptrlib

@@ -34,7 +34,6 @@ jobs:
           
           # バイナリ系のチェック
           checksec --help > /dev/null
-          rp++ --help > /dev/null
           ropr --help > /dev/null
           
           # Ruby系
