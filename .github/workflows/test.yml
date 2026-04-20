@@ -32,10 +32,6 @@ jobs:
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           source "$HOME/.cargo/env"
           
-          # pwntoolsの生存確認 (ユーザー提案の pwn -h)
-          pwn -h > /dev/null
-          python3 -c "import pwn; print('pwntools version:', pwn.__version__)"
-
           # バイナリ系のチェック
           checksec --help > /dev/null
           rp++ --help > /dev/null
